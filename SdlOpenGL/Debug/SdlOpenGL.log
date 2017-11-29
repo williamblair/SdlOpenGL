@@ -1,0 +1,6 @@
+﻿  SdlOpenGL.cpp
+c:\users\bj\documents\visual studio 2017\projects\sdlopengl\sdlopengl\sdlopengl.cpp(165): warning C4244: 'argument': conversion from 'float' to 'Uint32', possible loss of data
+  Display.cpp
+  Generating Code...
+  SdlOpenGL.vcxproj -> C:\Users\bj\documents\visual studio 2017\Projects\SdlOpenGL\Debug\SdlOpenGL.exe
+  SdlOpenGL.vcxproj -> C:\Users\bj\documents\visual studio 2017\Projects\SdlOpenGL\Debug\SdlOpenGL.pdb (Partial PDB)
