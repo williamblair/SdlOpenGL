@@ -3,15 +3,11 @@
 #include <iostream>
 #include <GL/glew.h>
 
-//#include "glad/glad.h"
-//#include <GLFW/glfw3.h>
 #include <SDL2/SDL.h>
 
 #ifndef DISPLAY_H_INCLUDED
 #define DISPLAY_H_INCLUDED
 
-// callback funcs
-//void framebuffer_size_callback(GLFWwindow *window, int width, int height);
 
 class Display
 {
@@ -34,7 +30,6 @@ public:
 
 private:
 
-    //GLFWwindow *window;
     SDL_Window *window;
     SDL_GLContext gc;
     bool quit;

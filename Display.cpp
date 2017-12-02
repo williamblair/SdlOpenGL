@@ -1,43 +1,10 @@
 #include "Display.hpp"
 
-// callbacks
-//void framebuffer_size_callback(GLFWwindow *window, int width, int height)
-//{
-//    glViewport(0,0, width, height);
-//}
-
 // Constructor
 Display::Display(const char *title, const int width, const int height)
 {
-    // init GLFW
-/*    glfwInit();
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-    // create the window
-    window = NULL;
-    window = glfwCreateWindow(width, height, title, NULL, NULL);
-    if(!window) {
-        std::cerr << "Display::Display: failed to create GLFW window!\n";
-        glfwTerminate();
-        exit(EXIT_FAILURE);
-    }
-
-    // use the opengl context on the window
-    glfwMakeContextCurrent(window);
-
-    // set the framebuffer size callback
-    glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
-
-    // use glad to load all opengl function pointers
-    if(!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
-    {
-        std::cerr << "Display::Display: failed to intialize GLAD\n";
-        glfwTerminate();
-        exit(EXIT_FAILURE);
-    }
-*/
+    // internal 'window should close' boolean
     quit = false;
 
     // init SDL
@@ -85,12 +52,6 @@ void Display::clear(void)
 
 void Display::update(void)
 {
-    //glfwSwapBuffers(window);
-    //glfwPollEvents();
-
-    //if(glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
-    //    glfwSetWindowShouldClose(window, true);
-
     SDL_Event e;
     while(SDL_PollEvent(&e))
     {
@@ -102,7 +63,6 @@ void Display::update(void)
 
 bool Display::shouldClose(void)
 {
-    //return glfwWindowShouldClose(window);
     return quit;
 }
 
