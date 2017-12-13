@@ -18,8 +18,13 @@ public:
     // draw the vertices
     void draw(void);
 
+    // load the given texture and store it
+    bool loadTexture(std::string fname);
+
 private:
     std::vector<GLfloat> vertices; 
+
+    GLuint textureID;
 
     GLuint VAO, VBO;
 };

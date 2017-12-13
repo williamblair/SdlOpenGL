@@ -25,14 +25,14 @@ int main()
          0.0f,  0.5f, 0.0f  // top   
     };*/
     std::vector<GLfloat> vertices = {
-        // vertices            // color
-        -0.5f, -0.5f, 0.0f,    1.0f, 0.0f, 0.0f, // bottom left
-         0.5f, -0.5f, 0.0f,    0.0f, 1.0f, 0.0f, // bottom right
-         0.0f,  0.5f, 0.0f,    0.0f, 0.0f, 1.0f  // top
-    } ;
+        // vertices            // color             // texture coords
+        -0.5f, -0.5f, 0.0f,    1.0f, 0.0f, 0.0f,    0.0f, 0.0f, // bottom left
+         0.5f, -0.5f, 0.0f,    0.0f, 1.0f, 0.0f,    1.0f, 0.0f, // bottom right
+         0.0f,  0.5f, 0.0f,    0.0f, 0.0f, 1.0f,     0.5f, 1.0f  // top
+    };
 
     Object object(vertices);
-
+    object.loadTexture("wall.jpg");
 
     // uncomment this call to draw in wireframe polygons.
     //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
