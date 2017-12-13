@@ -18,6 +18,9 @@ public:
     // tell opengl to use our shader
     void use(void);
 
+    // return the program ID
+    GLuint getProgID(void);
+
 private:
 
     std::string getShaderStr(const std::string filename);

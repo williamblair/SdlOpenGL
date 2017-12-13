@@ -86,3 +86,8 @@ std::string Shader::getShaderStr(const std::string filename)
 
     return str;
 }
+
+GLuint Shader::getProgID(void)
+{
+    return progID;
+}

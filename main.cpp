@@ -19,11 +19,17 @@ int main()
 
     // set up vertex data (and buffer(s)) and configure vertex attributes
     // ------------------------------------------------------------------
-    std::vector<GLfloat> vertices = {
+    /*std::vector<GLfloat> vertices = {
         -0.5f, -0.5f, 0.0f, // left  
          0.5f, -0.5f, 0.0f, // right 
          0.0f,  0.5f, 0.0f  // top   
-    }; 
+    };*/
+    std::vector<GLfloat> vertices = {
+        // vertices            // color
+        -0.5f, -0.5f, 0.0f,    1.0f, 0.0f, 0.0f, // bottom left
+         0.5f, -0.5f, 0.0f,    0.0f, 1.0f, 0.0f, // bottom right
+         0.0f,  0.5f, 0.0f,    0.0f, 0.0f, 1.0f  // top
+    } ;
 
     Object object(vertices);
 
@@ -37,6 +43,7 @@ int main()
     {
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
         display.clear();
+
 
         // draw our first triangle
         shader.use();
