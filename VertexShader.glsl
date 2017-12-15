@@ -10,9 +10,13 @@ out vec4 fragColor;
 // send the texture location to the fragment shader
 out vec2 texCoord;
 
+// the transformation matrix
+uniform mat4 transform;
+
 void main()
 {
-   gl_Position = vec4(aPos, 1.0);
-   fragColor   = vec4(aColor, 1.0);
-   texCoord = aTexCoord;
+   //gl_Position = vec4(aPos, 1.0);
+    gl_Position = transform * vec4(aPos, 1.0);
+    fragColor   = vec4(aColor, 1.0);
+    texCoord = aTexCoord;
 }

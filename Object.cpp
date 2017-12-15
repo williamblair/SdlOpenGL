@@ -4,10 +4,18 @@
 #include "stb_image.h"
 
 // constructor
-Object::Object(std::vector<GLfloat> &vertices)
+Object::Object(std::vector<GLfloat> &vertices, GLuint shaderID)
 {
     // copy in the data
     this->vertices = vertices;
+
+    // set the associated shader id
+    this->shaderID = shaderID;
+    
+    transformLoc = glGetUniformLocation(this->shaderID, "transform");
+
+    // default the transformation to identity
+    transform = glm::mat4(1.0f);
 
     // generate the array and buffer objects
     glGenVertexArrays(1, &VAO);
@@ -49,6 +57,9 @@ Object::~Object(void)
 
 void Object::draw(void)
 {
+    // set the transformation matrix value
+    glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(transform));
+
     glBindTexture(GL_TEXTURE_2D, textureID);
     glBindVertexArray(VAO);
     glDrawArrays(GL_TRIANGLES, 0, vertices.size() / 3);
@@ -85,4 +96,13 @@ bool Object::loadTexture(std::string fname)
     return true;
 }
 
+bool Object::rotate(GLfloat angle, glm::vec3 axis)
+{    
+    // set the new transformation matrix and set its value in the shader
+    transform = glm::rotate(angle, axis);
+    unsigned int transformLoc = glGetUniformLocation(shaderID, "transform");
+    glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(transform));
+
+    return true;
+}
 

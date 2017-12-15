@@ -4,6 +4,11 @@
 #include <iostream>
 #include <vector>
 
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtx/transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
+
 #include "Display.hpp"
 #include "Shader.hpp"
 #include "Object.hpp"
@@ -31,11 +36,13 @@ int main()
          0.0f,  0.5f, 0.0f,    0.0f, 0.0f, 1.0f,     0.5f, 1.0f  // top
     };
 
-    Object object(vertices);
+    Object object(vertices, shader.getProgID());
     object.loadTexture("wall.jpg");
 
     // uncomment this call to draw in wireframe polygons.
     //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+
+    object.rotate(glm::radians(45.0f), glm::vec3(0.0f,0.0f,1.0f));
 
     // render loop
     // -----------
@@ -43,7 +50,6 @@ int main()
     {
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
         display.clear();
-
 
         // draw our first triangle
         shader.use();
