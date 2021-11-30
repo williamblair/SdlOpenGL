@@ -7,7 +7,7 @@
 #include <glm/gtc/type_ptr.hpp>
 
 #include "Renderer.h"
-#include "Shader.hpp"
+#include "Shader.h"
 #include "Mesh.h"
 
 
@@ -17,7 +17,7 @@ int main()
     Renderer render( "SDL2 Window", 640, 480 );
 
 
-    Shader shader( "VertexShader.glsl", "FragmentShader.glsl" );
+    Shader shader( "shaders/VertexShader.glsl", "shaders/FragmentShader.glsl" );
 
     // set up vertex data (and buffer(s)) and configure vertex attributes
     // ------------------------------------------------------------------
@@ -28,7 +28,7 @@ int main()
          0.0f,  0.5f, 0.0f,    0.0f, 0.0f, 1.0f,     0.5f, 1.0f  // top
     };
 
-    Mesh mesh( vertices, shader.getProgID() );
+    Mesh mesh( vertices, shader.GetProgID() );
     mesh.LoadTexture( "wall.jpg" );
 
     // uncomment this call to draw in wireframe polygons.
@@ -44,7 +44,7 @@ int main()
         render.Clear();
 
         // draw our first triangle
-        shader.use();
+        shader.Use();
         mesh.Draw();
  
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
