@@ -29,7 +29,7 @@ int main()
     };
 
     Mesh mesh( vertices, shader.GetProgID() );
-    mesh.LoadTexture( "wall.jpg" );
+    mesh.LoadTexture( "data/wall.jpg" );
 
     // uncomment this call to draw in wireframe polygons.
     //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
