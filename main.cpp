@@ -10,6 +10,9 @@
 #include "Shader.h"
 #include "Mesh.h"
 
+#ifdef WIN32
+#undef main
+#endif
 
 int main()
 {
