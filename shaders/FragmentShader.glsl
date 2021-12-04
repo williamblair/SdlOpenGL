@@ -14,3 +14,4 @@ void main()
     //FragColor = texture(ourTexture, texCoord);
     FragColor = texture(ourTexture, texCoord) * fragColor;
 }
+
