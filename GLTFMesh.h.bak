@@ -1,0 +1,409 @@
+#ifndef GLTF_MESH_H_INCLUDED
+#define GLTF_MESH_H_INCLUDED
+
+#include "cgltf.h"
+
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtx/transform.hpp>
+#include <glm/gtc/quaternion.hpp>
+#include <glm/gtx/quaternion.hpp>
+#include <glm/gtc/type_ptr.hpp>
+
+class GLTFMesh
+{
+public:
+    GLTFMesh() :
+        mData( nullptr ),
+        mPosition( 0.0f, 0.0f, 0.0f, 1.0f ),
+        mRotation( 0.0f )
+    {
+    }
+
+    ~GLTFMesh()
+    {
+        if ( mData ) {
+            cgltf_free( mData );
+            mData = nullptr;
+        }
+        glDeleteVertexArrays( 1, &mVAO );
+        glDeleteBuffers( 1, &mVBO );
+    }
+
+    bool Load(const char* filename)
+    {
+        cgltf_options options;
+        memset(&options, 0, sizeof(options));
+
+        cgltf_result result = cgltf_parse_file( &options, filename, &mData );
+        if ( result != cgltf_result_success ) {
+            printf( "Failed to load gltf %s\n", filename );
+            return false;
+        }
+
+        result = cgltf_load_buffers( &options, mData, filename );
+        if ( result != cgltf_result_success ) {
+            cgltf_free( mData );
+            printf("Failed to load buffers for gltf %s\n", filename );
+            return false;
+        }
+
+        result = cgltf_validate( mData );
+        if ( result != cgltf_result_success ) {
+            cgltf_free( mData );
+            printf("Failed to validate file %s\n", filename);
+            return false;
+        }
+
+        printf( "GLTF num scenes: %lu\n", mData->scenes_count );
+        for ( size_t i=0; i<mData->scenes_count; ++i)
+        {
+            cgltf_scene& scene = mData->scenes[i];
+            printf( "Scene %lu: %s\n", i, scene.name );
+            printf( "Num nodes: %lu\n", scene.nodes_count );
+            for ( size_t j=0; j<scene.nodes_count; ++j )
+            {
+                glm::mat4 parentMat( 1.0f );
+                cgltf_node* node = scene.nodes[j];
+                processNode( j, parentMat, node );
+            }
+        }
+
+        printf( "Node positions:\n" );
+        for ( glm::vec4& pos : mNodePositions )
+        {
+            float* f = glm::value_ptr( pos );
+            printf( "%f, %f, %f, %f\n", f[0], f[1], f[2], f[3] );
+        }
+
+        return true;
+    }
+
+    void CreateBuffers( GLuint shaderID )
+    {
+        mShaderID = shaderID;
+        mTransformLoc = glGetUniformLocation( mShaderID, "transform" );
+
+        glGenVertexArrays( 1, &mVAO );
+        glGenBuffers( 1, &mVBO );
+
+        glBindVertexArray( mVAO );
+            glBindBuffer( GL_ARRAY_BUFFER, mVBO );
+            glBufferData(
+                GL_ARRAY_BUFFER,
+                mNodePositions.size() * sizeof( glm::vec4 ),
+                (void*)mNodePositions.data(),
+                GL_STATIC_DRAW
+            );
+            const std::size_t FLOATS_PER_VERT = 4;
+            glVertexAttribPointer( 0, 4, GL_FLOAT, GL_FALSE, FLOATS_PER_VERT*sizeof(GLfloat), (void*)0 );
+            glEnableVertexAttribArray( 0 ); // location=0
+            
+            glBindBuffer( GL_ARRAY_BUFFER, 0 );
+        glBindVertexArray( 0 );
+    }
+
+    void Draw( glm::mat4& perspMat )
+    {
+        mRotation += 0.1f;
+        glm::mat4 transform =
+            perspMat *
+            glm::translate( glm::mat4(1.0f), glm::vec3(0.0f, -2.0f, -10.0f) ) *
+            glm::rotate( glm::mat4(1.0f), mRotation, glm::vec3(0.0f, 1.0f, 0.0f) );
+        glUniformMatrix4fv( mTransformLoc, 1, GL_FALSE, glm::value_ptr(transform) );
+
+        glBindVertexArray( mVAO );
+        glDisable( GL_POINT_SMOOTH );
+        glPointSize( 4.0f );
+        glDrawArrays( GL_POINTS, 0, mNodePositions.size() );
+    }
+
+private:
+    cgltf_data* mData;
+
+    glm::vec4 mPosition;
+    std::vector<glm::vec4> mNodePositions;
+
+    GLuint mShaderID;
+    GLuint mTransformLoc;
+    GLuint mVAO, mVBO;
+
+    GLfloat mRotation;
+
+    inline void processNode( size_t parentIndex, glm::mat4 parentWorldMat, cgltf_node* node )
+    {
+        printNode( parentIndex, node );
+        
+        glm::quat nodeRotation = glm::angleAxis( 0.0f, glm::vec3(1.0f, 0.0, 0.0f) );
+        glm::vec3 nodeTranslation(0.0f, 0.0f, 0.0f);
+        glm::vec3 nodeScale(1.0f, 1.0f, 1.0f);
+
+        if ( node->has_translation ) {
+            printf( "Has Translation: (%f, %f, %f)\n",
+                node->translation[0],
+                node->translation[1],
+                node->translation[2]
+            );
+            nodeTranslation = glm::vec3(
+                node->translation[0],
+                node->translation[1],
+                node->translation[2]
+            );
+        }
+        if ( node->has_rotation) {
+            printf( "Has Rotation: (%f, %f, %f, %f)\n",
+                node->rotation[0],
+                node->rotation[1],
+                node->rotation[2],
+                node->rotation[3]
+            );
+            nodeRotation = glm::quat(
+                node->rotation[3], // in GLM, W component stored first
+                node->rotation[0],
+                node->rotation[1],
+                node->rotation[2]
+            );
+        }
+        if ( node->has_scale ) {
+            printf( "Has Scale: (%f, %f, %f)\n",
+                node->scale[0],
+                node->scale[1],
+                node->scale[2]
+            );
+            nodeScale = glm::vec3(
+                node->scale[0],
+                node->scale[1],
+                node->scale[2]
+            );
+        }
+        if ( node->has_matrix ) {
+            printf( "Has Matrix:\n"
+                    "%f, %f, %f, %f\n"
+                    "%f, %f, %f, %f\n"
+                    "%f, %f, %f, %f\n"
+                    "%f, %f, %f, %f\n",
+                node->matrix[0],
+                node->matrix[1],
+                node->matrix[2],
+                node->matrix[3],
+                node->matrix[4],
+                node->matrix[5],
+                node->matrix[6],
+                node->matrix[7],
+                node->matrix[8],
+                node->matrix[9],
+                node->matrix[10],
+                node->matrix[11],
+                node->matrix[12],
+                node->matrix[13],
+                node->matrix[14],
+                node->matrix[15]
+            );
+        }
+        glm::mat4 nodeLocalMat =
+            glm::translate( glm::mat4(1.0f), nodeTranslation ) * 
+            glm::mat4_cast( nodeRotation ) *
+            glm::scale( glm::mat4(1.0f), nodeScale );
+        {
+            float* matPtr = glm::value_ptr( nodeLocalMat );
+            printf( "Local Matrix:\n"
+                    "%f, %f, %f, %f\n"
+                    "%f, %f, %f, %f\n"
+                    "%f, %f, %f, %f\n"
+                    "%f, %f, %f, %f\n",
+                matPtr[0],
+                matPtr[1],
+                matPtr[2],
+                matPtr[3],
+                matPtr[4],
+                matPtr[5],
+                matPtr[6],
+                matPtr[7],
+                matPtr[8],
+                matPtr[9],
+                matPtr[10],
+                matPtr[11],
+                matPtr[12],
+                matPtr[13],
+                matPtr[14],
+                matPtr[15]
+            );
+        }
+
+        glm::mat4 nodeWorldMat = parentWorldMat * nodeLocalMat;
+        {
+            float* matPtr = glm::value_ptr( nodeWorldMat );
+            printf( "World Matrix:\n"
+                    "%f, %f, %f, %f\n"
+                    "%f, %f, %f, %f\n"
+                    "%f, %f, %f, %f\n"
+                    "%f, %f, %f, %f\n",
+                matPtr[0],
+                matPtr[1],
+                matPtr[2],
+                matPtr[3],
+                matPtr[4],
+                matPtr[5],
+                matPtr[6],
+                matPtr[7],
+                matPtr[8],
+                matPtr[9],
+                matPtr[10],
+                matPtr[11],
+                matPtr[12],
+                matPtr[13],
+                matPtr[14],
+                matPtr[15]
+            );
+        }
+
+        mNodePositions.push_back( nodeWorldMat * mPosition );
+
+        for ( size_t i=0; i<node->children_count; ++i ) {
+            cgltf_node* childNode = node->children[i];
+            processNode( parentIndex+1, nodeWorldMat, childNode );
+        }
+    }
+
+    inline void printNode( const size_t nodeNum, cgltf_node* node )
+    {
+        printf( "Node %lu: %s\n", nodeNum, node->name );
+        printf( "Parent: 0x%p\n", (void*)node->parent );
+        printf( "Num children: %lu\n", node->children_count );
+
+        glm::quat nodeRotation;
+        glm::vec3 nodeTranslation(0.0f, 0.0f, 0.0f);
+        glm::vec3 nodeScale(1.0f, 1.0f, 1.0f);
+
+        if ( node->has_translation ) {
+            printf( "Has Translation: (%f, %f, %f)\n",
+                node->translation[0],
+                node->translation[1],
+                node->translation[2]
+            );
+            nodeTranslation = glm::vec3(
+                node->translation[0],
+                node->translation[1],
+                node->translation[2]
+            );
+        }
+        if ( node->has_rotation) {
+            printf( "Has Rotation: (%f, %f, %f, %f)\n",
+                node->rotation[0],
+                node->rotation[1],
+                node->rotation[2],
+                node->rotation[3]
+            );
+            nodeRotation = glm::quat(
+                node->rotation[0],
+                node->rotation[1],
+                node->rotation[2],
+                node->rotation[3]
+            );
+        }
+        if ( node->has_scale ) {
+            printf( "Has Scale: (%f, %f, %f)\n",
+                node->scale[0],
+                node->scale[1],
+                node->scale[2]
+            );
+            nodeScale = glm::vec3(
+                node->scale[0],
+                node->scale[1],
+                node->scale[2]
+            );
+        }
+        if ( node->has_matrix ) {
+            printf( "Has Matrix:\n"
+                    "%f, %f, %f, %f\n"
+                    "%f, %f, %f, %f\n"
+                    "%f, %f, %f, %f\n"
+                    "%f, %f, %f, %f\n",
+                node->matrix[0],
+                node->matrix[1],
+                node->matrix[2],
+                node->matrix[3],
+                node->matrix[4],
+                node->matrix[5],
+                node->matrix[6],
+                node->matrix[7],
+                node->matrix[8],
+                node->matrix[9],
+                node->matrix[10],
+                node->matrix[11],
+                node->matrix[12],
+                node->matrix[13],
+                node->matrix[14],
+                node->matrix[15]
+            );
+        }
+        glm::mat4 nodeLocalMat =
+            glm::translate( glm::mat4(1.0f), nodeTranslation ) * 
+            glm::mat4_cast( nodeRotation ) *
+            glm::scale( glm::mat4(1.0f), nodeScale );
+        {
+            float* matPtr = glm::value_ptr( nodeLocalMat );
+            printf( "Local Matrix:\n"
+                    "%f, %f, %f, %f\n"
+                    "%f, %f, %f, %f\n"
+                    "%f, %f, %f, %f\n"
+                    "%f, %f, %f, %f\n",
+                matPtr[0],
+                matPtr[1],
+                matPtr[2],
+                matPtr[3],
+                matPtr[4],
+                matPtr[5],
+                matPtr[6],
+                matPtr[7],
+                matPtr[8],
+                matPtr[9],
+                matPtr[10],
+                matPtr[11],
+                matPtr[12],
+                matPtr[13],
+                matPtr[14],
+                matPtr[15]
+            );
+        }
+
+        cgltf_skin* skin = node->skin;
+        if ( skin ) {
+            printf( "Skin name: %s\n", skin->name );
+            printf( "Skin joint names: " );
+            for ( size_t i=0; i<skin->joints_count; ++i ) {
+                printf( "%s, ", skin->joints[i]->name );
+            }
+            if ( skin->skeleton ) {
+                printf( "Skin skeleton name: %s\n", skin->skeleton->name );
+            }
+        }
+        
+        cgltf_mesh* mesh = node->mesh;
+        if ( mesh ) {
+            printf( "Mesh name: %s\n", mesh->name );
+            printf( "Mesh weights: " );
+            for ( size_t i=0; i<mesh->weights_count; ++i ) {
+                printf( "%f, ", mesh->weights[i] );
+            }
+            printf( "\n" );
+            printf( "Target names: " );
+            for ( size_t i=0; i<mesh->target_names_count; ++i ) {
+                printf( "%s, ", mesh->target_names[i] );
+            }
+            printf( "\n" );
+        }
+
+        if ( node->weights_count > 0 ) {
+            printf( "Has weights: " );
+            for ( size_t k = 0; k < node->weights_count; ++k ) {
+                printf( "%f, ", node->weights[k] );
+            }
+            printf( "\n" );
+        }
+    }
+
+};
+
+#endif // GLTF_MESH_H_INCLUDED
+
