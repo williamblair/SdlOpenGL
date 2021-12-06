@@ -15,7 +15,10 @@ class GLTFMesh
 public:
     GLTFMesh() :
         mData( nullptr ),
-        mPosition( 0.0f, 0.0f, 0.0f, 1.0f )
+        mPosition( 0.0f, 0.0f, 0.0f ),
+        mCurrentFrame( 0 ),
+        mNextFrame( 1 ),
+        mAnimTime( 0.0f )
     {
     }
 
@@ -25,11 +28,11 @@ public:
             cgltf_free( mData );
             mData = nullptr;
         }
-        //glDeleteVertexArrays( 1, &mVAO );
-        //glDeleteBuffers( 1, &mVBO );
+        glDeleteVertexArrays( 1, &mVAO );
+        glDeleteBuffers( 1, &mVBO );
     }
 
-    bool Load(const char* filename)
+    bool Load( const char* filename )
     {
         cgltf_options options;
         memset(&options, 0, sizeof(options));
@@ -53,84 +56,6 @@ public:
             printf("Failed to validate file %s\n", filename);
             return false;
         }
-
-#if 0
-        printf( "GLTF num scenes: %lu\n", mData->scenes_count );
-        for ( size_t i=0; i<mData->scenes_count; ++i)
-        {
-            cgltf_scene& scene = mData->scenes[i];
-            printf( "Scene %lu: %s\n", i, scene.name );
-            printf( "Num nodes: %lu\n", scene.nodes_count );
-            for ( size_t j=0; j<scene.nodes_count; ++j )
-            {
-                cgltf_node* node = scene.nodes[j];
-                if ( node->mesh ) {
-                    cgltf_mesh* mesh = node->mesh;
-                    if ( mesh->name ) {
-                        printf( "Mesh name: %s\n", mesh->name );
-                    }
-                    printf( "Mesh target names: " );
-                    for ( size_t k=0; k<mesh->target_names_count; ++k ) {
-                        printf( "%s, ", mesh->target_names[i] );
-                    }
-                    printf( "\n" );
-                    if ( !mesh->primitives || mesh->primitives_count == 0 ) {
-                        continue;
-                    }
-                    for ( size_t k=0; k<mesh->primitives_count; ++k ) {
-                        cgltf_primitive& prim = mesh->primitives[k];
-                        cgltf_primitive_type type = prim.type;
-                        printf( "Prim Type: " );
-                        switch ( type )
-                        {
-                        case cgltf_primitive_type_points: printf( "points\n" ); break;
-                        case cgltf_primitive_type_lines: printf( "lines\n" ); break;
-                        case cgltf_primitive_type_line_loop: printf( "loop\n" ); break;
-                        case cgltf_primitive_type_line_strip: printf( "strip\n" ); break;
-                        case cgltf_primitive_type_triangles: printf( "triangles\n" ); break;
-                        case cgltf_primitive_type_triangle_strip: printf( "triangle strip\n" ); break;
-                        case cgltf_primitive_type_triangle_fan: printf( "fan\n" ); break;
-                        default:
-                            break;
-                        }
-
-                        if ( prim.indices ) {
-                            printf( "Indices not null\n" );
-                            handleIndices( prim.indices );
-                        }
-                        if ( prim.material ) {
-                            printf( "material not null\n" );
-                        }
-                        if ( prim.attributes_count > 0 ) {
-                            printf( "Attributes count > 0\n" );
-                            for ( size_t l=0; l<prim.attributes_count; ++l ) {
-                                cgltf_attribute& attrib = prim.attributes[l];
-                                printf( "Attrib Name: %s\n", attrib.name );
-                                printf( "Attrib type: " );
-                                switch ( attrib.type )
-                                {
-                                case cgltf_attribute_type_invalid: printf( "Invalid\n" ); break;
-                                case cgltf_attribute_type_position: printf( "Position\n" ); break;
-                                case cgltf_attribute_type_normal: printf( "normal\n" ); break;
-                                case cgltf_attribute_type_tangent: printf( "tangent\n" ); break;
-                                case cgltf_attribute_type_texcoord: printf( "texcoord\n" ); break;
-                                case cgltf_attribute_type_color: printf( "color\n" ); break;
-                                case cgltf_attribute_type_joints: printf( "joints\n" ); break;
-                                case cgltf_attribute_type_weights: printf( "weights\n" ); break;
-                                }
-                                printf( "Attrib index: %d\n", attrib.index );
-                                if ( attrib.data ) {
-                                    printf( "Attrib data not null\n" );
-                                    cgltf_accessor* data = attrib.data;
-                                    handleAttribData( data );
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-#endif
 
         printf( "Animations count: %lu\n", mData->animations_count );
         for ( size_t i = 0; i < mData->animations_count; ++i )
@@ -163,13 +88,130 @@ public:
         return true;
     }
 
+    void CreateBuffer( GLuint shaderID )
+    {
+        mShaderID = shaderID;
+        mTransformLoc = glGetUniformLocation( mShaderID, "transform" );
+        glGenVertexArrays( 1, &mVAO );
+        glGenBuffers( 1, &mVBO );
+
+        const size_t FLOATS_PER_VERTEX = 3;
+
+        glBindVertexArray( mVAO );
+            glBindBuffer( GL_ARRAY_BUFFER, mVBO );
+            glBufferData( GL_ARRAY_BUFFER, mVertices.size()*sizeof(GLfloat), mVertices.data(), GL_DYNAMIC_DRAW );
+
+            // Vertex Attribute
+            // ---------------------------------------------------------------------------
+            //glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3*sizeof(GLfloat), (void*)0);
+            glVertexAttribPointer( 0, 3, GL_FLOAT, GL_FALSE, FLOATS_PER_VERTEX*sizeof(GLfloat), (void*)0 );
+            glEnableVertexAttribArray( 0 ); // location=0
+            
+            // Color Attribute
+            // ---------------------------------------------------------------------------
+            //glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3*sizeof(GLfloat), (void*)0);
+            //glVertexAttribPointer( 1, 3, GL_FLOAT, GL_FALSE, FLOATS_PER_VERTEX*sizeof(GLfloat), (void*)(3*sizeof(GLfloat)) );
+            //glEnableVertexAttribArray( 1 ); // location=1
+
+            // Texture Attribute
+            // ---------------------------------------------------------------------------
+            //glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3*sizeof(GLfloat), (void*)0);
+            //glVertexAttribPointer( 2, 2, GL_FLOAT, GL_FALSE, FLOATS_PER_VERTEX*sizeof(GLfloat), (void*)(6*sizeof(GLfloat)) );
+            //glEnableVertexAttribArray( 2 ); // location=1
+
+            glBindBuffer( GL_ARRAY_BUFFER, 0 );
+        glBindVertexArray( 0 );
+    } 
+
+    /* dt = delta frame time in seconds */
+    void Update( const float dt )
+    {
+        /* Increase animation time */
+        mAnimTime += dt;
+        /* If past total animation time, reset back to beginning */
+        if ( mAnimTime >= mTotalAnimTime ) {
+            mAnimTime -= mTotalAnimTime;
+            mCurrentFrame = 0;
+            mNextFrame = 1;
+        }
+
+        /* See if we're in between the next pair of keyframes */
+        if ( mAnimTime >= mKeyFrames[mNextFrame].time ) {
+            /* If so, update which frames we're interpolating between */
+            mCurrentFrame = mNextFrame;
+            mNextFrame = ( mNextFrame + 1 ) % mKeyFrames.size();
+        }
+
+        /* Get the current and next keyframes */
+        KeyFrame& curFrame = mKeyFrames[ mCurrentFrame ];
+        KeyFrame& nextFrame = mKeyFrames[ mNextFrame ];
+
+        /* Figure out time percentage between current and next frame */
+        const float t = ( mAnimTime - curFrame.time ) / 
+            ( nextFrame.time - curFrame.time );
+
+        /* Interpolate rotation of current and next frame */
+        glm::quat& q1 = curFrame.rotation;
+        glm::quat& q2 = nextFrame.rotation;
+        glm::quat interpRot = glm::mix( q1, q2, t );
+        glm::mat4 rotMat = glm::mat4_cast( interpRot );
+
+        /* Apply the rotation to the default vertices */
+        if ( mFrameVertices.size() != mVertices.size() ) {
+            mFrameVertices.resize( mVertices.size() );
+        }
+        for ( size_t i = 0; i < mVertices.size(); i += 3 )
+        {
+            // TODO - this is really inefficient...
+            glm::vec4 inVec( mVertices[i+0], mVertices[i+1], mVertices[i+2], 1.0f );
+            glm::vec4 outVec = rotMat * inVec;
+            float* outPtr = glm::value_ptr( outVec );
+            mFrameVertices[i+0] = outPtr[0];
+            mFrameVertices[i+1] = outPtr[1];
+            mFrameVertices[i+2] = outPtr[2];
+        }
+        /* Update the OpenGL buffer */
+        glBindBuffer( GL_ARRAY_BUFFER, mVBO );
+        glBufferSubData( GL_ARRAY_BUFFER, 0, mFrameVertices.size()*sizeof(GLfloat), mFrameVertices.data() );
+        glBindBuffer( GL_ARRAY_BUFFER, 0 );
+    }
+
+    void SetPosition( glm::vec3 pos ) {
+        mPosition = pos;
+        mTransform = glm::translate( glm::mat4(1.0f), mPosition );
+    }
+
+    void Draw( glm::mat4& perspMat )
+    {
+        // set the transformation matrix value
+        mTransform =
+            perspMat *
+            glm::translate( glm::mat4(1.0f), mPosition );
+        glUniformMatrix4fv( mTransformLoc, 1, GL_FALSE, glm::value_ptr(mTransform) );
+
+        //glBindTexture( GL_TEXTURE_2D, mTextureID );
+        glBindVertexArray( mVAO );
+        const size_t FLOATS_PER_VERTEX = 3;
+        glDrawArrays( GL_TRIANGLES, 0, mVertices.size() / FLOATS_PER_VERTEX );
+    }
+
 private:
     cgltf_data* mData;
-    glm::vec4 mPosition;
+    glm::vec3 mPosition;
+    glm::mat4 mTransform;
 
     std::vector<float> mVertices;
     std::vector<unsigned short> mIndices;
     std::vector<float> mFrameVertices; // animated data for the current frame
+
+    size_t mCurrentFrame;
+    size_t mNextFrame;
+    float mAnimTime;
+    float mTotalAnimTime;
+
+    GLuint mVAO, mVBO;
+    GLuint mShaderID;
+    GLuint mTransformLoc;
 
     struct KeyFrame
     {
