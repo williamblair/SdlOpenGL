@@ -138,12 +138,57 @@ public:
             handleAnimation( &mData->animations[i] );
         }
 
+        printf( "Vertices:\n" );
+        for ( size_t i = 0; i < mVertices.size(); i += 3 )
+        {
+            printf( "%f, %f, %f\n",
+                    mVertices[i+0],
+                    mVertices[i+1],
+                    mVertices[i+2] );
+        }
+        printf( "Indices:\n" );
+        for ( size_t i = 0; i < mIndices.size() / 3; i += 3 )
+        {
+            printf( "%u, %u, %u\n",
+                    mIndices[i+0],
+                    mIndices[i+1],
+                    mIndices[i+2] );
+        }
+        printf( "KeyFrames:\n" );
+        for ( KeyFrame& f : mKeyFrames )
+        {
+            f.print();
+        }
+
         return true;
     }
 
 private:
     cgltf_data* mData;
     glm::vec4 mPosition;
+
+    std::vector<float> mVertices;
+    std::vector<unsigned short> mIndices;
+    std::vector<float> mFrameVertices; // animated data for the current frame
+
+    struct KeyFrame
+    {
+        float time;
+        glm::quat rotation;
+
+        void print()
+        {
+            float* quatPtr = glm::value_ptr( rotation );
+            printf( "Time: %f\n"
+                    "Rotation: %f, %f, %f, %f\n",
+                 time,
+                 quatPtr[0],
+                 quatPtr[1],
+                 quatPtr[2],
+                 quatPtr[3] );
+        }
+    };
+    std::vector<KeyFrame> mKeyFrames;
 
     void handleAttribData( cgltf_accessor* data )
     {
@@ -200,11 +245,19 @@ private:
                         size_t byteIndex = buff->offset;
                         unsigned char* byteBuff = (unsigned char*)viewbuf->data;
                         size_t stride = buff->stride == 0 ? data->stride : buff->stride;
-                        while ( byteIndex < buff->size )
+                        if ( mVertices.size() != data->count*3 ) {
+                            mVertices.resize( data->count*3 );
+                        }
+                        size_t counter = 0;
+                        while ( byteIndex < buff->size && counter < data->count )
                         {
                             float* floatPtr = (float*)&byteBuff[byteIndex];
                             printf( "    %f, %f, %f\n", floatPtr[0], floatPtr[1], floatPtr[2] );
                             byteIndex += stride;
+                            mVertices[counter*3 + 0] = floatPtr[0];
+                            mVertices[counter*3 + 1] = floatPtr[1];
+                            mVertices[counter*3 + 2] = floatPtr[2];
+                            ++counter;
                         }
                     }
                     else {
@@ -274,11 +327,17 @@ private:
                         size_t byteIndex = buff->offset;
                         unsigned char* byteBuff = (unsigned char*)viewbuf->data;
                         size_t stride = buff->stride == 0 ? data->stride : buff->stride;
-                        while ( byteIndex < buff->size )
+                        size_t counter = 0;
+                        if ( mIndices.size() != data->count ) {
+                            mIndices.resize( data->count );
+                        }
+                        while ( byteIndex < buff->size && counter < data->count )
                         {
                             unsigned short* shortPtr = (unsigned short*)&byteBuff[byteIndex];
                             printf( "%u, ", shortPtr[0] );
                             byteIndex += stride;
+                            mIndices[counter] = shortPtr[0];
+                            ++counter;
                         }
                         printf( "\n" );
                     }
@@ -390,11 +449,15 @@ private:
                         unsigned char* byteBuff = (unsigned char*)viewbuf->data;
                         size_t stride = buff->stride == 0 ? input->stride : buff->stride;
                         size_t counter = 0;
+                        if ( mKeyFrames.size() != input->count ) {
+                            mKeyFrames.resize( input->count );
+                        }
                         while ( byteIndex < buff->size && counter < input->count )
                         {
                             float* floatPtr = (float*)&byteBuff[byteIndex];
                             printf( "%f\n", floatPtr[0] );
                             byteIndex += stride;
+                            mKeyFrames[counter].time = floatPtr[0];
                             ++counter;
                         }
                     }
@@ -467,6 +530,10 @@ private:
                         unsigned char* byteBuff = (unsigned char*)viewbuf->data;
                         size_t stride = buff->stride == 0 ? output->stride : buff->stride;
                         size_t counter = 0;
+                        if ( mKeyFrames.size() != output->count )
+                        {
+                            mKeyFrames.resize( output->count );
+                        }
                         while ( byteIndex < buff->size && counter < output->count )
                         {
                             float* floatPtr = (float*)&byteBuff[byteIndex];
@@ -476,6 +543,14 @@ private:
                                     floatPtr[2],
                                     floatPtr[3] );
                             byteIndex += stride;
+
+                            mKeyFrames[counter].rotation = glm::quat(
+                                floatPtr[3], // w
+                                floatPtr[0], // x
+                                floatPtr[1], // y
+                                floatPtr[2]  // z
+                            );
+
                             ++counter;
                         }
                     }
