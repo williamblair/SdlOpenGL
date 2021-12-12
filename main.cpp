@@ -74,8 +74,8 @@ int main()
     GameTimer gameTimer;
 
 
-    Shader shader( "shaders/VertexShader.glsl", "shaders/FragmentShader.glsl" );
-    //Shader skelTestShader( "shaders/SkelVertShader.glsl", "shaders/SkelFragShader.glsl" );
+    //Shader shader( "shaders/VertexShader.glsl", "shaders/FragmentShader.glsl" );
+    Shader skelTestShader( "shaders/SkelVertShader.glsl", "shaders/SkelFragShader.glsl" );
 
     // set up vertex data (and buffer(s)) and configure vertex attributes
     // ------------------------------------------------------------------
@@ -97,14 +97,12 @@ int main()
     //mesh.Rotate( glm::radians(45.0f), glm::vec3(0.0f,0.0f,1.0f) );
 
     GLTFMesh gltf;
-    if ( !gltf.Load(/*"data/Woman.gltf"*/"data/animTri.gltf") ) {
+    if ( !gltf.Load("data/Woman.gltf"/*"data/animTri.gltf"*/) ) {
         return 1;
     }
-    //skelTestShader.Use();
-    //gltf.CreateBuffers( skelTestShader.GetProgID() );
-    shader.Use();
-    gltf.CreateBuffer( shader.GetProgID() );
-    gltf.SetPosition( glm::vec3(0.0f, 0.0f, -5.0f) );
+    skelTestShader.Use();
+    gltf.CreateBuffers( skelTestShader.GetProgID() );
+    gltf.SetPosition( glm::vec3(0.0f, -3.0f, -8.0f) );
 
 
     //testMatConstr();
@@ -121,16 +119,16 @@ int main()
         // draw our first triangle
         //shader.Use();
         //mesh.Draw();
-        //skelTestShader.Use();
+        skelTestShader.Use();
         //gltf.Draw( perspMat );
-        shader.Use();
+        //shader.Use();
         gltf.Draw( perspMat );
  
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
         // -------------------------------------------------------------------------------
         render.Update();
 
-        gltf.Update( dt );
+        //gltf.Update( dt );
     }
 
     return 0;
