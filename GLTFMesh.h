@@ -1,6 +1,8 @@
 #ifndef GLTF_MESH_H_INCLUDED
 #define GLTF_MESH_H_INCLUDED
 
+#include <map>
+
 #include "cgltf.h"
 
 #include <glm/glm.hpp>
@@ -59,13 +61,6 @@ public:
             printf("Failed to validate file %s\n", filename);
             return false;
         }
-
-        printf( "Animations count: %lu\n", mData->animations_count );
-        mAnimations.resize( mData->animations_count );
-        for ( size_t i = 0; i < mData->animations_count; ++i )
-        {
-            loadAnimation( mData->animations[i], mAnimations[i] );
-        }
         
         printf( "Nodes count: %lu\n", mData->nodes_count );
         mNodes.resize( mData->nodes_count );
@@ -76,6 +71,15 @@ public:
                 loadNodes( mData->nodes[i], mNodes );
                 break;
             }
+        }
+        
+        /* Must happenn after load nodes so mCgltfNodeToIntMap is filled */
+        printf( "Animations count: %lu\n", mData->animations_count );
+        mAnimations.resize( mData->animations_count );
+        for ( size_t i = 0; i < mData->animations_count; ++i )
+        {
+            loadAnimation( mData->animations[i], mAnimations[i] );
+            mAnimations[i].print();
         }
 
         /* Generate default skeleton nodes */
@@ -198,6 +202,7 @@ private:
         }
     };
     std::vector<Node> mNodes;
+    std::map<cgltf_node*, int> mCgltfNodeToIntMap;
     std::vector<Animation> mAnimations;
   
     void loadAnimation( cgltf_animation& anim, Animation& result )
@@ -211,12 +216,33 @@ private:
         for ( size_t i = 0; i < anim.channels_count; ++i )
         {
             cgltf_animation_channel& channel = anim.channels[i];
+            cgltf_node* targetNode = channel.target_node;
+            if ( mCgltfNodeToIntMap.find( targetNode ) == mCgltfNodeToIntMap.end() )
+            {
+                printf( "Error - failed to find cgltf node to int anim target node\n" );
+                return;
+            }
+            int nodeIndex = mCgltfNodeToIntMap[targetNode];
+            int nodeAnimIndex = -1;
+            for ( size_t j = 0; j < result.nodeAnims.size(); ++j )
+            {
+                if ( result.nodeAnims[j].node == nodeIndex ) {
+                    nodeAnimIndex = j;
+                    break;
+                }
+            }
+            if ( nodeAnimIndex == -1 ) {
+                result.nodeAnims.push_back( NodeAnimation() );
+                nodeAnimIndex = result.nodeAnims.size() - 1;
+                result.nodeAnims[nodeAnimIndex].node = nodeIndex;
+            }
+            NodeAnimation& nodeAnim = result.nodeAnims[nodeAnimIndex];
             
             switch ( channel.target_path )
             {
-            case cgltf_animation_path_type_translation: loadAnimTranslation( channel, result.transKeyFrames ); break;
-            case cgltf_animation_path_type_rotation: loadAnimRotation( channel, result.rotKeyFrames ); break;
-            case cgltf_animation_path_type_scale: loadAnimScale( channel, result.scaleKeyFrames ); break;
+            case cgltf_animation_path_type_translation: loadAnimTranslation( channel, nodeAnim.transKeyFrames ); break;
+            case cgltf_animation_path_type_rotation: loadAnimRotation( channel, nodeAnim.rotKeyFrames ); break;
+            case cgltf_animation_path_type_scale: loadAnimScale( channel, nodeAnim.scaleKeyFrames ); break;
             case cgltf_animation_path_type_weights: printf( "Unhandled weights target path\n" ); break;
             default:
                 break;
@@ -241,7 +267,7 @@ private:
         for ( size_t i = 0; i < result.size(); ++i )
         {
             result[i].time = times[i];
-            result[i].translation = translations[i];
+            result[i].translation = glm::vec3( translations[i] );
         }
     }
     
@@ -262,7 +288,7 @@ private:
         for ( size_t i = 0; i < result.size(); ++i )
         {
             result[i].time = times[i];
-            result[i].rotation = rotations[i];
+            result[i].rotation = glm::quat( rotations[i] );
         }
     }
     
@@ -283,7 +309,7 @@ private:
         for ( size_t i = 0; i < result.size(); ++i )
         {
             result[i].time = times[i];
-            result[i].scale = scales[i];
+            result[i].scale = glm::vec3( scales[i] );
         }
     }
     
@@ -306,10 +332,11 @@ private:
         const size_t stride = view.stride == 0 ? accessor.stride : view.stride;
         size_t counter = 0;
         result.resize( accessor.count );
-        while ( byteIndex < view.size && counter < accessor.count )
+        while ( byteIndex < buffer.size && counter < accessor.count )
         {
             float* floatPtr = (float*)&byteBuff[byteIndex];
             result[counter] = *floatPtr;
+            //printf( "loadKeyframeTime: %f\n", result[counter] );
             ++counter;
             byteIndex += stride;
         }
@@ -334,10 +361,11 @@ private:
         const size_t stride = view.stride == 0 ? accessor.stride : view.stride;
         size_t counter = 0;
         result.resize( accessor.count );
-        while ( byteIndex < view.size && counter < accessor.count )
+        while ( byteIndex < buffer.size && counter < accessor.count )
         {
             float* floatPtr = (float*)&byteBuff[byteIndex];
             result[counter] = glm::vec3( floatPtr[0], floatPtr[1], floatPtr[2] );
+            //printf( "loadKeyframeVec3s: %f,%f,%f\n", floatPtr[0], floatPtr[1], floatPtr[2] );
             ++counter;
             byteIndex += stride;
         }
@@ -362,10 +390,12 @@ private:
         const size_t stride = view.stride == 0 ? accessor.stride : view.stride;
         size_t counter = 0;
         result.resize( accessor.count );
-        while ( byteIndex < view.size && counter < accessor.count )
+        while ( byteIndex < buffer.size && counter < accessor.count )
         {
             float* floatPtr = (float*)&byteBuff[byteIndex];
             result[counter] = glm::quat( floatPtr[3], floatPtr[0], floatPtr[1], floatPtr[2] );
+            //printf( "loadKeyFrameQuats: %f,%f,%f,%f\n",
+            //    floatPtr[0], floatPtr[1], floatPtr[2], floatPtr[3] );
             ++counter;
             byteIndex += stride;
         }
@@ -383,6 +413,7 @@ private:
         node.parent = -1;
         loadNodeTransforms( rootNode, node );
         int nodeCounter = 0;
+        mCgltfNodeToIntMap[&rootNode] = 0;
         for ( size_t i = 0; i < rootNode.children_count; ++i )
         {
             loadNode( *rootNode.children[i], 0, nodeCounter, result );
@@ -399,6 +430,7 @@ private:
         result[parentIndex].children.push_back( thisNodeIndex );
         result[thisNodeIndex].parent = parentIndex;
         loadNodeTransforms( node, result[thisNodeIndex] );
+        mCgltfNodeToIntMap[&node] = thisNodeIndex;
         for ( size_t i = 0; i < node.children_count; ++i )
         {
             loadNode( *node.children[i], thisNodeIndex, nodeIndexCounter, result );
