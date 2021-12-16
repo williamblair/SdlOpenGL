@@ -13,6 +13,8 @@ struct NodeAnimation
     std::vector<KeyFrameRot> rotKeyFrames;
     std::vector<KeyFrameTrans> transKeyFrames;
     std::vector<KeyFrameScale> scaleKeyFrames;
+    float startTime;
+    float endTime;
     
     void print()
     {
@@ -64,6 +66,8 @@ struct Animation
 {
     std::string name;
     std::vector<NodeAnimation> nodeAnims;
+    float startTime;
+    float endTime;
     
     void print()
     {
@@ -73,6 +77,42 @@ struct Animation
         {
             anim.print();
         }
+    }
+    
+    void calcStartEndTime()
+    {
+        /* Find the min and max keyframe times for start and end time */
+        float minTime = 10000.0f;
+        float maxTime = 0.0f;
+        for ( NodeAnimation& nodeAnim : nodeAnims )
+        {
+            std::vector<KeyFrameRot>& rotFrames = nodeAnim.rotKeyFrames;
+            std::vector<KeyFrameTrans>& transFrames = nodeAnim.transKeyFrames;
+            std::vector<KeyFrameScale>& scaleFrames = nodeAnim.scaleKeyFrames;
+            
+            for ( size_t i = 0;
+                  i < std::max( rotFrames.size(),
+                                std::max( transFrames.size(),
+                                          scaleFrames.size() ));
+                  ++i )
+            {
+                if ( i < rotFrames.size() ) {
+                    if ( rotFrames[i].time < minTime ) minTime = rotFrames[i].time;
+                    if ( rotFrames[i].time > maxTime ) maxTime = rotFrames[i].time;
+                }
+                if ( i < transFrames.size() ) {
+                    if ( transFrames[i].time < minTime ) minTime = transFrames[i].time;
+                    if ( transFrames[i].time > maxTime ) maxTime = transFrames[i].time;
+                }
+                if ( i < scaleFrames.size() ) {
+                    if ( scaleFrames[i].time < minTime ) minTime = scaleFrames[i].time;
+                    if ( scaleFrames[i].time > maxTime ) maxTime = scaleFrames[i].time;
+                }
+            }
+        }
+        
+        startTime = minTime;
+        endTime = maxTime;
     }
 };
 

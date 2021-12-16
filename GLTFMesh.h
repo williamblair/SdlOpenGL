@@ -79,7 +79,8 @@ public:
         for ( size_t i = 0; i < mData->animations_count; ++i )
         {
             loadAnimation( mData->animations[i], mAnimations[i] );
-            mAnimations[i].print();
+            mAnimations[i].calcStartEndTime();
+            //mAnimations[i].print();
         }
 
         /* Generate default skeleton nodes */
@@ -100,13 +101,48 @@ public:
             
             for ( size_t i = 0; i < rootNode.children.size(); ++i )
             {
-                loadSkelVertNode( mNodes[rootNode.children[i]],
+                loadSkelVertNode( rootNode.children[i],
                     transform,
                     resIndex );
             }
         }
 
         return true;
+    }
+    
+    void Update( const float dt )
+    {
+        Animation& curAnim = mAnimations[0];
+        
+        /* Update animation time */
+        const float speedScale = 0.1f;
+        mAnimTime += dt * speedScale;
+        if ( mAnimTime > curAnim.endTime ) {
+            mAnimTime = curAnim.startTime + ( mAnimTime - curAnim.endTime );
+        }        
+
+        glm::vec4 pos( 0.0f, 0.0f, 0.0f, 1.0f );
+        Node& rootNode = mNodes[0];
+        glm::mat4 transform = rootNode.toMat4();
+        pos = transform * pos;
+        //pos = animMat * pos;
+        float* fPtr = glm::value_ptr( pos );
+        mFrameVertices[0] = fPtr[0];
+        mFrameVertices[1] = fPtr[1];
+        mFrameVertices[2] = fPtr[2];
+        size_t resIndex = 3;
+        
+        for ( size_t i = 0; i < rootNode.children.size(); ++i )
+        {
+            loadSkelVertNode( rootNode.children[i],
+                transform,
+                resIndex );
+        }
+        
+        /* Update vertices buffer */
+        glBindBuffer( GL_ARRAY_BUFFER, mVBO );
+        glBufferSubData( GL_ARRAY_BUFFER, 0, mFrameVertices.size()*sizeof(GLfloat), mFrameVertices.data() );
+        glBindBuffer( GL_ARRAY_BUFFER, 0 );
     }
     
     void CreateBuffers( GLuint shaderID )
@@ -151,7 +187,7 @@ public:
 
     void Draw( glm::mat4& perspMat )
     {
-        mRotation += 0.1f;
+        mRotation += 0.001f;
         // set the transformation matrix value
         mTransform =
             perspMat *
@@ -180,7 +216,6 @@ private:
     size_t mCurrentFrame;
     size_t mNextFrame;
     float mAnimTime;
-    float mTotalAnimTime;
 
     GLuint mVAO, mVBO;
     GLuint mShaderID;
@@ -474,10 +509,121 @@ private:
         }
     }
     
-    void loadSkelVertNode( Node& node, glm::mat4& parentTransform, size_t& resIndex )
+    void loadSkelVertNode( const int nodeIndex, glm::mat4& parentTransform, size_t& resIndex )
     {
+        Node& node = mNodes[nodeIndex];
+        
+        /* Test animating a single node first */
+        Animation& curAnim = mAnimations[0];
+        /* Find the node animation for this node */
+        NodeAnimation* nodeAnim = nullptr;
+        for ( size_t animIndex = 0; animIndex < curAnim.nodeAnims.size(); ++animIndex )
+        {
+            /* Zero is the root node index */
+            if ( curAnim.nodeAnims[animIndex].node == nodeIndex ) {
+                nodeAnim = &curAnim.nodeAnims[animIndex];
+                break;
+            }
+        }
+
+        glm::quat interpRot = node.rotation;
+        glm::vec3 interpTrans = node.translation;
+        glm::vec3 interpScale = node.scale;
+        
+        if ( nodeAnim )
+        {
+        if ( nodeAnim->rotKeyFrames.size() > 0 ) {
+            std::vector<KeyFrameRot>& rotFrames = nodeAnim->rotKeyFrames;
+            /* Find what our current and next keyframes are based on current time */
+            KeyFrameRot* curFrame = nullptr;
+            size_t curFrameIndex = 0;
+            size_t nextFrameIndex = 0;
+            for ( size_t i = 0; i < rotFrames.size(); ++i ) {
+                if ( rotFrames[i].time <= mAnimTime &&
+                     rotFrames[(i+1) % rotFrames.size()].time > mAnimTime )
+                {
+                    curFrame = &rotFrames[i];
+                    curFrameIndex = i;
+                    nextFrameIndex = (i+1) % rotFrames.size();
+                    printf( "Cur, next frame index: %lu, %lu\n", curFrameIndex, nextFrameIndex );
+                    break;
+                }
+            }
+            if ( curFrame != nullptr ) {
+                KeyFrameRot* nextFrame = &rotFrames[nextFrameIndex];
+                const float t = ( mAnimTime - curFrame->time ) /
+                    ( nextFrame->time - curFrame->time );
+                printf( "Interp t: %f\n", t );
+                interpRot = glm::mix( curFrame->rotation, nextFrame->rotation, t );
+            }
+            else {
+                printf( "Failed to find cur rot frame\n" );
+            }
+        }
+        if ( nodeAnim->transKeyFrames.size() > 0 ) {
+            std::vector<KeyFrameTrans>& transFrames = nodeAnim->transKeyFrames;
+            /* Find what our current and next keyframes are based on current time */
+            KeyFrameTrans* curFrame = nullptr;
+            size_t curFrameIndex = 0;
+            size_t nextFrameIndex = 0;
+            for ( size_t i = 0; i < transFrames.size(); ++i ) {
+                if ( transFrames[i].time <= mAnimTime &&
+                     transFrames[(i+1) % transFrames.size()].time > mAnimTime )
+                {
+                    curFrame = &transFrames[i];
+                    curFrameIndex = i;
+                    nextFrameIndex = (i+1) % transFrames.size();
+                    printf( "Cur, next frame index: %lu, %lu\n", curFrameIndex, nextFrameIndex );
+                    break;
+                }
+            }
+            if ( curFrame != nullptr ) {
+                KeyFrameTrans* nextFrame = &transFrames[nextFrameIndex];
+                const float t = ( mAnimTime - curFrame->time ) /
+                    ( nextFrame->time - curFrame->time );
+                printf( "Interp t: %f\n", t );
+                interpTrans = glm::mix( curFrame->translation, nextFrame->translation, t );
+            }
+            else {
+                printf( "Failed to find cur trans frame" );
+            }
+        }
+        if ( nodeAnim->scaleKeyFrames.size() > 0 ) {
+            std::vector<KeyFrameScale>& scaleFrames = nodeAnim->scaleKeyFrames;
+            /* Find what our current and next keyframes are based on current time */
+            KeyFrameScale* curFrame = nullptr;
+            size_t curFrameIndex = 0;
+            size_t nextFrameIndex = 0;
+            for ( size_t i = 0; i < scaleFrames.size(); ++i ) {
+                if ( scaleFrames[i].time <= mAnimTime &&
+                     scaleFrames[(i+1) % scaleFrames.size()].time > mAnimTime )
+                {
+                    curFrame = &scaleFrames[i];
+                    curFrameIndex = i;
+                    nextFrameIndex = (i+1) % scaleFrames.size();
+                    printf( "Cur, next frame index: %lu, %lu\n", curFrameIndex, nextFrameIndex );
+                    break;
+                }
+            }
+            if ( curFrame != nullptr ) {
+                KeyFrameScale* nextFrame = &scaleFrames[nextFrameIndex];
+                const float t = ( mAnimTime - curFrame->time ) /
+                    ( nextFrame->time - curFrame->time );
+                printf( "Interp t: %f\n", t );
+                interpScale = glm::mix( curFrame->scale, nextFrame->scale, t );
+            }
+            else {
+                printf( "Failed to find cur scale frame" );
+            }
+        }
+        }
+        
+        glm::mat4 animMat = glm::translate( glm::mat4(1.0f), interpTrans ) *
+                glm::mat4_cast( interpRot ) *
+                glm::scale( glm::mat4(1.0f), interpScale );
+        
         glm::vec4 pos( 0.0f, 0.0f, 0.0f, 1.0f );
-        glm::mat4 transform = parentTransform * node.toMat4();
+        glm::mat4 transform = parentTransform * /*node.toMat4()*/animMat;
         pos = transform * pos;
         float* fPtr = glm::value_ptr( pos );
         mFrameVertices[resIndex+0] = fPtr[0];
@@ -487,7 +633,7 @@ private:
         
         for ( size_t i = 0; i < node.children.size(); ++i )
         {
-            loadSkelVertNode( mNodes[node.children[i]],
+            loadSkelVertNode( node.children[i],
                 transform,
                 resIndex );
         }
