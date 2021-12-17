@@ -103,7 +103,7 @@ int main()
     skelTestShader.Use();
     gltf.CreateBuffers( skelTestShader.GetProgID() );
     gltf.SetPosition( glm::vec3(0.0f, -3.0f, -8.0f) );
-
+    gltf.SetAnimation( 0 );
 
     //testMatConstr();
 

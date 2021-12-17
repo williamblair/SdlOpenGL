@@ -4,6 +4,8 @@
 #include <cstdio>
 #include <string>
 #include <vector>
+#include <algorithm>
+#include <cassert>
 
 #include "KeyFrame.h"
 
@@ -86,6 +88,19 @@ struct Animation
         float maxTime = 0.0f;
         for ( NodeAnimation& nodeAnim : nodeAnims )
         {
+            for ( size_t i = 0; i < nodeAnim.rotKeyFrames.size() - 1; ++i )
+            {
+                assert( nodeAnim.rotKeyFrames[i].time < nodeAnim.rotKeyFrames[i+1].time );
+            }
+            for ( size_t i = 0; i < nodeAnim.transKeyFrames.size() - 1; ++i )
+            {
+                assert( nodeAnim.transKeyFrames[i].time < nodeAnim.transKeyFrames[i+1].time );
+            }
+            for ( size_t i = 0; i < nodeAnim.scaleKeyFrames.size() - 1; ++i )
+            {
+                assert( nodeAnim.scaleKeyFrames[i].time < nodeAnim.scaleKeyFrames[i+1].time );
+            }
+            
             std::vector<KeyFrameRot>& rotFrames = nodeAnim.rotKeyFrames;
             std::vector<KeyFrameTrans>& transFrames = nodeAnim.transKeyFrames;
             std::vector<KeyFrameScale>& scaleFrames = nodeAnim.scaleKeyFrames;
