@@ -10,8 +10,7 @@
 
 #include "Renderer.h"
 #include "Shader.h"
-#include "Mesh.h"
-//#include "GLTFMesh.h"
+#include "AssimpMesh.h"
 #include "GameTimer.h"
 
 #ifdef WIN32
@@ -69,67 +68,25 @@ static bool testMatConstr()
 
 int main()
 {
-
-    Renderer render( "SDL2 Window", 640, 480 );
+    Renderer& render = *Renderer::GetInstance();
+    render.Init( "SDL2 Window", 640, 480 );
     GameTimer gameTimer;
+    AssimpMesh asmpMesh( "data/Woman.gltf" );
+    Texture asmpTex( "data/Woman.png" );
 
+    asmpMesh.SetTexture( &asmpTex, 0 );
+    asmpMesh.SetPosition( glm::vec3(1.0f,-2.0f,-3.0f) );
+    asmpMesh.SetScale( glm::vec3(0.005f,0.005f,0.005f) );
 
-    //Shader shader( "shaders/VertexShader.glsl", "shaders/FragmentShader.glsl" );
-    Shader skelTestShader( "shaders/SkelVertShader.glsl", "shaders/SkelFragShader.glsl" );
-    Shader texLitShader( "shaders/TexLitVertexShader.glsl", "shaders/TexLitFragmentShader.glsl" );
-
-    // set up vertex data (and buffer(s)) and configure vertex attributes
-    // ------------------------------------------------------------------
-#if 0
-    std::vector<GLfloat> vertices = {
-        // vertices            // color             // texture coords
-        -0.5f, -0.5f, 0.0f,    1.0f, 0.0f, 0.0f,    0.0f, 0.0f, // bottom left
-         0.5f, -0.5f, 0.0f,    0.0f, 1.0f, 0.0f,    1.0f, 0.0f, // bottom right
-         0.0f,  0.5f, 0.0f,    0.0f, 0.0f, 1.0f,     0.5f, 1.0f  // top
-    };
-#endif
-
-    //Mesh mesh( vertices, shader.GetProgID() );
-    //mesh.LoadTexture( "data/wall.jpg" );
-
-    // uncomment this call to draw in wireframe polygons.
-    //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-
-    //mesh.Rotate( glm::radians(45.0f), glm::vec3(0.0f,0.0f,1.0f) );
-
-    //GLTFMesh gltf;
-    //if ( !gltf.Load("data/Woman.gltf"/*"data/animTri.gltf"*/) ) {
-    //    return 1;
-    //}
-    //skelTestShader.Use();
-    //gltf.CreateBuffers( skelTestShader.GetProgID() );
-    //gltf.SetPosition( glm::vec3(0.0f, -3.0f, -8.0f) );
-    //gltf.SetAnimation( 0 );
-
-    //testMatConstr();
-
-    // render loop
-    // -----------
     while ( !render.ShouldClose() )
     {
+        float dt = gameTimer.Update();
+        asmpMesh.Update( dt );
+
         glClearColor( 0.2f, 0.3f, 0.3f, 1.0f );
         render.Clear();
-
-        float dt = gameTimer.Update();
-
-        // draw our first triangle
-        //shader.Use();
-        //mesh.Draw();
-        //skelTestShader.Use();
-        //gltf.Draw( perspMat );
-        //shader.Use();
-        //gltf.Draw( perspMat );
- 
-        // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
-        // -------------------------------------------------------------------------------
+        asmpMesh.Draw();
         render.Update();
-
-        //gltf.Update( dt );
     }
 
     return 0;

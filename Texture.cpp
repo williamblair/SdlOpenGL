@@ -6,6 +6,7 @@
 
 Texture::Texture( const std::string& fileName )
 {
+    stbi_set_flip_vertically_on_load(true);
     unsigned char* data = stbi_load( fileName.c_str(), &mWidth, &mHeight, &mNumChannels, 0 );
     if ( !data ) {
         std::cerr << "Texture::Texture failed to load " << fileName << std::endl;

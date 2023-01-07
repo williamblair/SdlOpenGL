@@ -1,5 +1,5 @@
 #ifndef VERTEX_BUFFER_H_INCLUDED
-#define VERTEX_BUFFER_H_INLUDED
+#define VERTEX_BUFFER_H_INCLUDED
 
 #include <cstdint>
 #include <GL/glew.h>
@@ -29,6 +29,8 @@ struct VertexTexCol2d
 
 class VertexBuffer
 {
+    friend class Renderer;
+
 public:
 
     enum Type

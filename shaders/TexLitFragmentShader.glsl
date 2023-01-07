@@ -52,7 +52,7 @@ void main()
 {
     FragColor = vec4(
         calcPosLgt() + calcDirLgt() + calcAmbLgt(),
-        texture( uTexture0, vTexCoord ).a
+        1.0
     );
 }
 

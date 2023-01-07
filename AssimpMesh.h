@@ -3,10 +3,22 @@
 
 #include <string>
 #include <vector>
+#include <memory>
 
 #include <assimp/scene.h>
 #include <assimp/Importer.hpp>
 #include <assimp/postprocess.h>
+
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtx/transform.hpp>
+#include <glm/gtc/quaternion.hpp>
+#include <glm/gtx/quaternion.hpp>
+#include <glm/gtc/type_ptr.hpp>
+
+#include "VertexBuffer.h"
+#include "Texture.h"
+#include "Transform.h"
 
 class AssimpMesh
 {
@@ -19,6 +31,9 @@ public:
     void SetAnim    ( const std::string& name, bool loop = true );
     void SetAnimTime( const float time );
     void SetTexture ( const Texture* tex, size_t meshIdx = 0 );
+    void SetPosition( const glm::vec3& pos );
+    void SetRotation( const glm::quat& rot );
+    void SetScale   ( const glm::vec3& scl );
 
     void Draw(void);
 
@@ -27,6 +42,7 @@ public:
     float GetCurAnimTime  (void) const { return mAnimTime; }
 
 private:
+
     class Mesh
     {
     public:
@@ -50,18 +66,18 @@ private:
         ~Mesh();
 
         bool Load( const aiMesh* mesh, const aiScene* scene );
-        void Unload();
+        void Unload(void);
 
-        VertexBuffer& GetVertexBuffer() { return mVertBuf; }
-        const std::string& GetFileName() const { return mFileName; }
-        const std::vector<VertexTextured>& GetVertices() const { return mVertices; }
-        std::vector<VertexTextured>& GetFrameVertices() { return mFrameVertices; }
+        VertexBuffer&                       GetVertexBuffer() { return *mVertBuf; }
+        const std::string&                  GetFileName() const { return mFileName; }
+        const std::vector<VertexTextured>&  GetVertices() const { return mVertices; }
+        std::vector<VertexTextured>&        GetFrameVertices() { return mFrameVertices; }
         const std::vector<VertBoneIndices>& GetBoneIndices() const { return mBoneIndices; }
         const std::vector<VertBoneWeights>& GetBoneWeights() const { return mBoneWeights; }
 
     private:
 
-        VertexBuffer mVertBuf;
+        std::shared_ptr<VertexBuffer> mVertBuf;
         std::vector<VertexTextured> mVertices;
         std::vector<VertexTextured> mFrameVertices; // copy of mVertices, to be modified each frame for animation
         std::vector<VertBoneIndices> mBoneIndices;
@@ -72,7 +88,7 @@ private:
     static const size_t MAX_SKELETON_BONES = 96;
     struct MatrixPalette
     {
-        HopsMath::Mat4 mEntry[MAX_SKELETON_BONES];
+        glm::mat4 mEntry[MAX_SKELETON_BONES];
     };
 
     class Skeleton
@@ -81,19 +97,19 @@ private:
 
         struct Bone
         {
-            HopsMath::Mat4 mLocalBindPose;
+            glm::mat4 mLocalBindPose;
             std::string mName;
             int mParent;
         };
 
         bool Load( const aiMesh* assimpMesh, const aiScene* scene );
 
-        size_t GetNumBones() const { return mBones.size(); }
-        size_t GetRootBoneIdx() const { return mRootBoneIdx; }
-        const Bone& GetBone(size_t idx) const { return mBones[idx]; }
-        const std::vector<Bone>& GetBones() const { return mBones; }
-        const std::vector<HopsMath::Mat4>& GetGlobalInvBindPoses() const { return mGlobalInvBindPoses; }
-        const std::string& GetFileName() const { return mFileName; }
+        size_t                        GetNumBones(void)           const { return mBones.size(); }
+        size_t                        GetRootBoneIdx(void)        const { return mRootBoneIdx; }
+        const Bone&                   GetBone( size_t idx )       const { return mBones[idx]; }
+        const std::vector<Bone>&      GetBones(void)              const { return mBones; }
+        const std::vector<glm::mat4>& GetGlobalInvBindPoses(void) const { return mGlobalInvBindPoses; }
+        const std::string&            GetFileName(void)           const { return mFileName; }
 
     protected:
         // Called automatically when the skeleton is loaded
@@ -103,7 +119,7 @@ private:
         // The bones in the skeleton
         std::vector<Bone> mBones;
         // The global inverse bind poses for each bone
-        std::vector<HopsMath::Mat4> mGlobalInvBindPoses;
+        std::vector<glm::mat4> mGlobalInvBindPoses;
         // The file this was loaded from
         std::string mFileName;
         // which index into mBones is the root node
@@ -127,7 +143,7 @@ private:
         // for each bone at the specified time in the anim.
         // Time must be >= 0.0f && <= mDuration.
         void GetGlobalPoseAtTime(
-            std::vector<HopsMath::Mat4>& outPoses,
+            std::vector<glm::mat4>& outPoses,
             const Skeleton* inSkeleton,
             float inTime
         ) const;
@@ -142,7 +158,7 @@ private:
         // transform info for each frame on the track.
         // each index in the outer vector is a bone,
         // inner vector is a frame
-        std::vector<std::vector<HopsMath::Transform>> mTracks;
+        std::vector<std::vector<Transform>> mTracks;
 
         // file this was loaded from
         std::string mName;
@@ -157,7 +173,8 @@ private:
     Animation* mAnimation;
     float mAnimPlayRate;
     float mAnimTime;
-    std::vector<std::vector<HopsMath::Mat4>> mCurrentPoses;
+    std::vector<std::vector<glm::mat4>> mCurrentPoses;
+    Transform mTransform;
 
     bool processNode(
         const aiNode* node,
