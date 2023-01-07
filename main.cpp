@@ -11,7 +11,7 @@
 #include "Renderer.h"
 #include "Shader.h"
 #include "Mesh.h"
-#include "GLTFMesh.h"
+//#include "GLTFMesh.h"
 #include "GameTimer.h"
 
 #ifdef WIN32
@@ -76,6 +76,7 @@ int main()
 
     //Shader shader( "shaders/VertexShader.glsl", "shaders/FragmentShader.glsl" );
     Shader skelTestShader( "shaders/SkelVertShader.glsl", "shaders/SkelFragShader.glsl" );
+    Shader texLitShader( "shaders/TexLitVertexShader.glsl", "shaders/TexLitFragmentShader.glsl" );
 
     // set up vertex data (and buffer(s)) and configure vertex attributes
     // ------------------------------------------------------------------
@@ -96,14 +97,14 @@ int main()
 
     //mesh.Rotate( glm::radians(45.0f), glm::vec3(0.0f,0.0f,1.0f) );
 
-    GLTFMesh gltf;
-    if ( !gltf.Load("data/Woman.gltf"/*"data/animTri.gltf"*/) ) {
-        return 1;
-    }
-    skelTestShader.Use();
-    gltf.CreateBuffers( skelTestShader.GetProgID() );
-    gltf.SetPosition( glm::vec3(0.0f, -3.0f, -8.0f) );
-    gltf.SetAnimation( 0 );
+    //GLTFMesh gltf;
+    //if ( !gltf.Load("data/Woman.gltf"/*"data/animTri.gltf"*/) ) {
+    //    return 1;
+    //}
+    //skelTestShader.Use();
+    //gltf.CreateBuffers( skelTestShader.GetProgID() );
+    //gltf.SetPosition( glm::vec3(0.0f, -3.0f, -8.0f) );
+    //gltf.SetAnimation( 0 );
 
     //testMatConstr();
 
@@ -119,16 +120,16 @@ int main()
         // draw our first triangle
         //shader.Use();
         //mesh.Draw();
-        skelTestShader.Use();
+        //skelTestShader.Use();
         //gltf.Draw( perspMat );
         //shader.Use();
-        gltf.Draw( perspMat );
+        //gltf.Draw( perspMat );
  
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
         // -------------------------------------------------------------------------------
         render.Update();
 
-        gltf.Update( dt );
+        //gltf.Update( dt );
     }
 
     return 0;
