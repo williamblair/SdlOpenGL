@@ -69,6 +69,31 @@ void Shader::Use(void)
     glUseProgram( mProgID );
 }
 
+bool Shader::SetFloat( const std::string& name, const float val )
+{
+    GLint pos = glGetUniformLocation( mProgID, name.c_str() );
+    if ( pos < 0 ) { return false; }
+    glUniform1f( pos, val );
+    return true;
+}
+
+bool Shader::SetVec3( const std::string& name, const glm::vec3& val )
+{
+    GLint pos = glGetUniformLocation( mProgID, name.c_str() );
+    if ( pos < 0 ) { return false; }
+    glUniform3fv( pos, 1, glm::value_ptr(val) );
+    return true;
+}
+
+bool Shader::SetMat4( const std::string& name, const glm::mat4& val )
+{
+    GLint pos = glGetUniformLocation( mProgID, name.c_str() );
+    if ( pos < 0 ) { return false; }
+    const bool transpose = false;
+    glUniformMatrix4fv( pos, 1, transpose, glm::value_ptr(val) );
+    return true;
+}
+
 // deconstructor
 Shader::~Shader(void)
 {}
