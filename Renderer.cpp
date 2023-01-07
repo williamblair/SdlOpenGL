@@ -78,6 +78,29 @@ void Renderer::SetTexture( const Texture& tex )
     glBindTexture( GL_TEXTURE_2D, tex.mTextureID );
 }
 
+void Renderer::SetAmbientLight( float r, float g, float b )
+{
+    mAmbientLight.x = r;
+    mAmbientLight.y = g;
+    mAmbientLight.z = b;
+}
+
+bool Renderer::SetPosLight( const PositionalLight& lgt, const size_t index )
+{
+    if ( index >= MAX_POS_LIGHTS ) { return false; }
+    mPosLights[index].position = lgt.position;
+    mPosLights[index].diffuse = lgt.diffuse;
+    return true;
+}
+
+bool Renderer::SetDirLight( const DirectionalLight& lgt, const size_t index )
+{
+    if ( index >= MAX_DIR_LIGHTS ) { return false; }
+    mDirLights[index].direction = lgt.direction;
+    mDirLights[index].diffuse = lgt.diffuse;
+    return true;
+}
+
 void Renderer::DrawVertexBuffer( const glm::mat4& modelMat, const VertexBuffer& vb )
 {
     glm::mat4 mvpMat = mProjMat * mViewMat * modelMat;

@@ -30,24 +30,24 @@ public:
     // Apply the given texture to all future draw calls
     void SetTexture( const Texture& tex );
 
+    // Set the global ambient light color
+    void SetAmbientLight( float r, float g, float b );
+
     struct PositionalLight
     {
         glm::vec3 position;
         glm::vec3 diffuse;
     };
-    //TODO
-    //bool SetPosLight( const PositionalLight& lgt, const size_t index );
+    // Set a positional light properties at the given index
+    bool SetPosLight( const PositionalLight& lgt, const size_t index );
     
     struct DirectionalLight
     {
         glm::vec3 direction;
         glm::vec3 diffuse;
     };
-    //TODO
+    // Set a directional light properties at the given index
     bool SetDirLight( const DirectionalLight& lgt, const size_t index );
-
-    //TODO
-    //void SetAmbientLight( float r, float g, float b );
 
     // Render the data of the input vertex buffer with the given model matrix
     void DrawVertexBuffer( const glm::mat4& modelMat, const VertexBuffer& vb );
